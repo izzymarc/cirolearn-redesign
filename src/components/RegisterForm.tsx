@@ -1,13 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
 import { GitHubIcon, GoogleIcon } from "@/components/SocialIcons";
+import { supabase } from "@/lib/supabase";
 
 export function RegisterForm() {
   const [show, setShow] = useState(false);
   const [instructor, setInstructor] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+  const router = useRouter();
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError("");
+    if (!supabase) {
+      setError("Sign-up isn&apos;t connected yet — add your Supabase keys to enable it.");
+      return;
+    }
+    setLoading(true);
+    const { data, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
+    setLoading(false);
+    if (authError) {
+      setError(authError.message);
+    } else if (data.session) {
+      router.push("/");
+    } else {
+      setSent(true);
+    }
+  };
+
+  if (sent) {
+    return (
+      <>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-fg">
+          Check your email
+        </h1>
+        <p className="mt-2 text-muted">
+          We&apos;ve sent a confirmation link to{" "}
+          <span className="font-semibold text-fg">{email}</span>. Click it to
+          activate your account.
+        </p>
+        <p className="mt-8 text-center text-sm text-muted">
+          <Link
+            href="/login"
+            className="font-semibold text-violet-600 dark:text-violet-300"
+          >
+            Back to login
+          </Link>
+        </p>
+      </>
+    );
+  }
 
   return (
     <>
@@ -39,7 +94,7 @@ export function RegisterForm() {
         <span className="h-px flex-1 bg-black/10" />
       </div>
 
-      <form className="space-y-4">
+      <form onSubmit={submit} className="space-y-4">
         <div>
           <label htmlFor="name" className="text-sm font-medium text-fg">
             Full name
@@ -50,6 +105,8 @@ export function RegisterForm() {
               id="name"
               type="text"
               required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Jane Doe"
               className="h-12 w-full rounded-xl border border-border bg-[var(--background)] pl-10 pr-4 text-sm outline-none transition-colors focus:border-violet-500"
             />
@@ -65,6 +122,8 @@ export function RegisterForm() {
               id="email"
               type="email"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               className="h-12 w-full rounded-xl border border-border bg-[var(--background)] pl-10 pr-4 text-sm outline-none transition-colors focus:border-violet-500"
             />
@@ -80,6 +139,8 @@ export function RegisterForm() {
               id="password"
               type={show ? "text" : "password"}
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="h-12 w-full rounded-xl border border-border bg-[var(--background)] pl-10 pr-11 text-sm outline-none transition-colors focus:border-violet-500"
             />
@@ -102,11 +163,14 @@ export function RegisterForm() {
           />
           <span>Want to become an instructor? We&apos;ll set you up after signup.</span>
         </label>
+        {error && <p className="text-sm text-rose-500">{error}</p>}
         <button
           type="submit"
-          className="h-12 w-full rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition-opacity hover:opacity-90"
+          disabled={loading}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition-opacity hover:opacity-90 disabled:opacity-60"
         >
-          Create account
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading ? "Creating…" : "Create account"}
         </button>
       </form>
 

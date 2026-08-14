@@ -1,13 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import { GitHubIcon, GoogleIcon } from "@/components/SocialIcons";
+import { supabase } from "@/lib/supabase";
 
 export function LoginForm() {
   const [show, setShow] = useState(false);
   const [remember, setRemember] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError("");
+    if (!supabase) {
+      setError("Sign-in isn&apos;t connected yet — add your Supabase keys to enable it.");
+      return;
+    }
+    setLoading(true);
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    setLoading(false);
+    if (authError) {
+      setError(authError.message);
+    } else {
+      router.push("/");
+    }
+  };
 
   return (
     <>
@@ -39,7 +66,7 @@ export function LoginForm() {
         <span className="h-px flex-1 bg-black/10" />
       </div>
 
-      <form className="space-y-4">
+      <form onSubmit={submit} className="space-y-4">
         <div>
           <label htmlFor="email" className="text-sm font-medium text-fg">
             Email
@@ -50,6 +77,8 @@ export function LoginForm() {
               id="email"
               type="email"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               className="h-12 w-full rounded-xl border border-border bg-[var(--background)] pl-10 pr-4 text-sm outline-none transition-colors focus:border-violet-500"
             />
@@ -73,6 +102,8 @@ export function LoginForm() {
               id="password"
               type={show ? "text" : "password"}
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="h-12 w-full rounded-xl border border-border bg-[var(--background)] pl-10 pr-11 text-sm outline-none transition-colors focus:border-violet-500"
             />
@@ -95,11 +126,14 @@ export function LoginForm() {
           />
           Remember me
         </label>
+        {error && <p className="text-sm text-rose-500">{error}</p>}
         <button
           type="submit"
-          className="h-12 w-full rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition-opacity hover:opacity-90"
+          disabled={loading}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition-opacity hover:opacity-90 disabled:opacity-60"
         >
-          Log in
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading ? "Logging in…" : "Log in"}
         </button>
       </form>
 
